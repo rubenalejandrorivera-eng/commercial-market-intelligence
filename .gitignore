@@ -20,3 +20,7 @@ data/processed/*
 
 # VS Code
 .vscode/
+
+# Jupyter HTML exports
+*.html
+*_files/
