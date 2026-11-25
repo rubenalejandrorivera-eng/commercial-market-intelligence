@@ -1,6 +1,12 @@
 
 # Commercial Market Intelligence
 
+[![Live Dashboard](https://img.shields.io/badge/Live-Dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://commercial-market-intelligence-ujikepaephucbtc5itpssy.streamlit.app/)
+[![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+
+**Live Demo:** https://commercial-market-intelligence-ujikepaephucbtc5itpssy.streamlit.app/
+
 **An end-to-end retail analytics project using Python, Pandas, and Streamlit to transform transactional data into actionable business insights.**
 
 ## Project Overview
@@ -39,6 +45,7 @@ The dataset contains historical transactions, including product descriptions, qu
 - Jupyter Notebook
 - Git and GitHub
 
+
 ## Project Structure
 
 ```text
@@ -55,11 +62,23 @@ commercial-market-intelligence/
 ├── dashboard/
 │   └── app.py
 │
+├── docs/
+│   └── images/
+│       ├── overview_top.png
+│       ├── overview_bottom.png
+│       ├── customers1.png
+│       ├── customers2.png
+│       ├── geographic1.png
+│       ├── products1.png
+│       ├── products2.png
+│       └── products3.png
+│
 ├── reports/
 ├── requirements.txt
 ├── README.md
 └── .gitignore
 ```
+
 
 ## Methodology
 
@@ -103,6 +122,33 @@ The Streamlit dashboard provides four analytical sections:
 - **Customers:** RFM segmentation, customer distribution, and revenue contribution.
 - **Geographic Analysis:** Country-level customer and revenue performance.
 - **Products:** Top-performing products, product search, and revenue concentration analysis.
+
+
+### Dashboard Preview
+
+#### Overview
+
+![Overview - Top](docs/images/overview_top.png)
+
+![Overview - Bottom](docs/images/overview_bottom.png)
+
+#### Customer Intelligence
+
+![Customer Analysis](docs/images/customers1.png)
+
+![Customer Segmentation](docs/images/customers2.png)
+
+#### Geographic Analysis
+
+![Geographic Analysis](docs/images/geographic1.png)
+
+#### Product Performance
+
+![Product Performance](docs/images/products1.png)
+
+![Product Analysis](docs/images/products2.png)
+
+![Product Revenue Concentration](docs/images/products3.png)
 
 
 ## Installation and Setup
