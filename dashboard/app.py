@@ -1,7 +1,9 @@
-
 import streamlit as st
 import pandas as pd
 
+# --------------------------------------------------
+# PAGE CONFIGURATION
+# --------------------------------------------------
 
 st.set_page_config(
     page_title="Commercial Market Intelligence",
@@ -9,25 +11,12 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("Commercial Market Intelligence")
-
-st.markdown("""
-Interactive dashboard for commercial sales, product performance,
-customer segmentation and geographic market analysis.
-""")
-
-st.info(
-    "Dataset: UCI Online Retail | "
-    "Historical transactions from December 2010 to December 2011. "
-    "All revenue figures are reported in GBP (£)."
-)
-
-st.divider()
-
-
-
 DATA_PATH = "data/processed/"
 
+
+# --------------------------------------------------
+# DATA LOADING FUNCTIONS
+# --------------------------------------------------
 
 @st.cache_data
 def load_products():
@@ -36,6 +25,34 @@ def load_products():
         usecols=["StockCode", "Description", "Quantity", "Revenue"]
     )
 
+
+@st.cache_data
+def load_monthly_sales():
+
+    sales = pd.read_csv(
+        DATA_PATH + "physical_products.csv",
+        usecols=["InvoiceDate", "Revenue"],
+        parse_dates=["InvoiceDate"]
+    )
+
+    sales["Month"] = sales["InvoiceDate"].dt.to_period("M")
+
+    monthly_sales = (
+        sales.groupby("Month")["Revenue"]
+        .sum()
+        .sort_index()
+    )
+
+    monthly_sales.index = monthly_sales.index.strftime("%b %Y")
+
+    monthly_growth = monthly_sales.pct_change() * 100
+
+    return monthly_sales, monthly_growth
+
+
+# --------------------------------------------------
+# LOAD DATA
+# --------------------------------------------------
 
 customer_segments = pd.read_csv(
     DATA_PATH + "customer_segment_analysis.csv",
@@ -52,8 +69,53 @@ customer_country = pd.read_csv(
     index_col=0
 )
 
+products = load_products()
+
+monthly_sales, monthly_growth = load_monthly_sales()
 
 
+# --------------------------------------------------
+# HEADER
+# --------------------------------------------------
+
+st.markdown("""
+<div style="
+    background: linear-gradient(120deg, #14213D, #274C77);
+    padding: 32px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+">
+    <h1 style="
+        color: white;
+        font-size: 36px;
+        margin-bottom: 10px;
+    ">
+        Commercial Market Intelligence
+    </h1>
+    <p style="
+        color: #DCE6F1;
+        font-size: 16px;
+        margin-bottom: 0;
+    ">
+        Retail analytics | Customer intelligence |
+        Product performance | Market insights
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+
+st.info(
+    "Dataset: UCI Online Retail | "
+    "Historical transactions from December 2010 to December 2011. "
+    "All revenue figures are reported in GBP (£)."
+)
+
+st.divider()
+
+
+# --------------------------------------------------
+# KPI CALCULATIONS
+# --------------------------------------------------
 
 total_customers = customer_segments["Customers"].sum()
 
@@ -63,7 +125,15 @@ total_transactions = customer_country["Total_Transactions"].sum()
 
 average_revenue = total_revenue / total_customers
 
+best_month = monthly_sales.idxmax()
+best_month_revenue = monthly_sales.max()
+best_growth_month = monthly_growth.idxmax()
+best_growth = monthly_growth.max()
 
+
+# --------------------------------------------------
+# TABS
+# --------------------------------------------------
 
 tab1, tab2, tab3, tab4 = st.tabs([
     "Overview",
@@ -73,22 +143,25 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 
+# --------------------------------------------------
+# TAB 1: OVERVIEW
+# --------------------------------------------------
 
 with tab1:
 
-
     st.subheader("Business Overview")
+
     st.markdown("""
-This overview summarizes the commercial performance
-of identified customers, including revenue, transactions
-and customer value.
-""")
+    This overview summarizes the commercial performance
+    of identified customers, including revenue, transactions
+    and customer value.
+    """)
 
     col1, col2, col3, col4 = st.columns(4)
 
     col1.metric(
         "Identified Customers",
-        f"{total_customers:,}"
+        f"{total_customers:,.0f}"
     )
 
     col2.metric(
@@ -98,15 +171,62 @@ and customer value.
 
     col3.metric(
         "Identified Customer Transactions",
-        f"{total_transactions:,}"
+        f"{total_transactions:,.0f}"
     )
 
     col4.metric(
         "Revenue per Identified Customer",
         f"£{average_revenue:,.2f}"
     )
+    
+
+    st.divider()
+
+    st.metric(
+    "Best Sales Month",
+    best_month,
+    f"£{best_month_revenue:,.2f}"
+)
+    st.metric(
+    "Highest Monthly Growth",
+    best_growth_month,
+    f"{best_growth:.2f}%"
+)
+
+    st.subheader("Monthly Revenue Trend")
+
+    st.line_chart(
+        monthly_sales,
+        x_label="Month",
+        y_label="Revenue (£)"
+    )
+
+    st.caption(
+        "Monthly revenue from physical product sales, "
+        "December 2010–December 2011. "
+        "December 2011 is incomplete."
+    )
+
+    st.divider()
+
+st.subheader("Monthly Revenue Growth (%)")
+
+st.bar_chart(
+    monthly_growth.dropna(),
+    x_label="Month",
+    y_label="Growth (%)"
+)
 
 
+st.caption(
+    "Month-over-month revenue growth. "
+    "Positive values indicate growth, negative values indicate a decline."
+)
+
+
+# --------------------------------------------------
+# TAB 2: CUSTOMERS
+# --------------------------------------------------
 
 with tab2:
 
@@ -114,57 +234,42 @@ with tab2:
 
     st.bar_chart(
         customer_segments["Customers"],
-        x_label="Customer Segment",
-        y_label="Number of Customers"
+        horizontal=True,
+        x_label="Number of Customers",
+        y_label="Segment"
     )
 
     st.subheader("Revenue Contribution by Segment")
 
     st.bar_chart(
-        customer_segments["Revenue_Share"],
-        x_label="Customer Segment",
-        y_label="Revenue Share (%)"
+        customer_segments["Total_Revenue"],
+        horizontal=True,
+        x_label="Revenue (£)",
+        y_label="Segment"
     )
-
-    st.divider()
 
     st.subheader("Customer Segment Details")
 
     st.dataframe(
-        customer_segments.style.format({
-            "Total_Revenue": "£{:,.2f}",
-            "Average_Revenue": "£{:,.2f}",
-            "Average_Frequency": "{:.2f}",
-            "Average_Recency": "{:.2f}",
-            "Revenue_Share": "{:.2f}%"
-        }),
+        customer_segments,
         width="stretch"
     )
 
     st.divider()
 
-    st.subheader("Explore Individual Customers")
-
-    segments = sorted(customer_rfm["Segment"].unique())
+    st.subheader("Customer RFM Explorer")
 
     selected_segment = st.selectbox(
-        "Select a customer segment:",
-        ["All Segments"] + segments
+        "Select a customer segment",
+        ["All"] + sorted(customer_rfm["Segment"].unique().tolist())
     )
 
-    if selected_segment == "All Segments":
-
+    if selected_segment == "All":
         filtered_customers = customer_rfm
-
     else:
-
         filtered_customers = customer_rfm[
             customer_rfm["Segment"] == selected_segment
         ]
-
-    st.write(
-        f"Customers found: {len(filtered_customers):,}"
-    )
 
     st.dataframe(
         filtered_customers,
@@ -172,64 +277,64 @@ with tab2:
     )
 
 
+# --------------------------------------------------
+# TAB 3: GEOGRAPHIC ANALYSIS
+# --------------------------------------------------
 
 with tab3:
 
     st.subheader("Geographic Market Performance")
 
-    top_countries = customer_country.sort_values(
-        "Total_Revenue",
-        ascending=False
-    ).head(10)
+    top_countries = (
+        customer_country["Total_Revenue"]
+        .sort_values(ascending=False)
+        .head(10)
+    )
 
     st.bar_chart(
-        top_countries["Total_Revenue"],
-        x_label="Country",
-        y_label="Revenue (£)"
+        top_countries,
+        horizontal=True,
+        x_label="Revenue (£)",
+        y_label="Country"
     )
 
-    st.divider()
-
-    st.subheader("Explore Geographic Markets")
-
-    countries = sorted(customer_country.index.unique())
+    st.subheader("Country Details")
 
     selected_country = st.selectbox(
-        "Select a country:",
-        ["All Countries"] + countries
+        "Select a country",
+        customer_country.index.tolist()
     )
 
-    if selected_country == "All Countries":
+    col1, col2, col3 = st.columns(3)
 
-        filtered_countries = customer_country
+    col1.metric(
+        "Total Customers",
+        f"{customer_country.loc[selected_country, 'Total_Customers']:,}"
+    )
 
-    else:
+    col2.metric(
+        "Total Revenue",
+        f"£{customer_country.loc[selected_country, 'Total_Revenue']:,.2f}"
+    )
 
-        filtered_countries = customer_country.loc[
-            [selected_country]
-        ]
+    col3.metric(
+        "Revenue per Customer",
+        f"£{customer_country.loc[selected_country, 'Revenue_Per_Customer']:,.2f}"
+    )
 
     st.dataframe(
-        filtered_countries.style.format({
-            "Total_Revenue": "£{:,.2f}",
-            "Revenue_Per_Customer": "£{:,.2f}"
-        }),
+        customer_country.loc[[selected_country]],
         width="stretch"
     )
 
 
-
+# --------------------------------------------------
+# TAB 4: PRODUCTS
+# --------------------------------------------------
 
 with tab4:
 
     st.subheader("Product Performance Overview")
-
-    products = load_products()
-    
-
-    
-
-    st.subheader("Top 10 Products by Revenue")
 
     top_products = (
         products
@@ -246,11 +351,9 @@ with tab4:
         y_label="Product"
     )
 
-    # Top 10 products by units sold
+    st.subheader("Top Products by Units Sold")
 
-    st.subheader("Top 10 Products by Units Sold")
-
-    top_products_units = (
+    top_units = (
         products
         .groupby("Description")["Quantity"]
         .sum()
@@ -259,26 +362,21 @@ with tab4:
     )
 
     st.bar_chart(
-        top_products_units.sort_values(),
+        top_units.sort_values(),
         horizontal=True,
         x_label="Units Sold",
         y_label="Product"
     )
 
-    st.divider()
-
-    
-
-    st.subheader("Product Performance Details")
+    st.subheader("Product Summary")
 
     product_summary = (
         products
-        .groupby(["StockCode", "Description"])
+        .groupby("Description")
         .agg(
             Total_Units=("Quantity", "sum"),
             Total_Revenue=("Revenue", "sum")
         )
-        .reset_index()
     )
 
     product_summary["Average_Unit_Price"] = (
@@ -291,104 +389,80 @@ with tab4:
             "Total_Revenue",
             ascending=False
         ),
-        width="stretch",
-        hide_index=True
+        width="stretch"
     )
-
-    
-
-    st.subheader("Search Products")
-
-    product_search = st.text_input(
-        "Enter a product name:"
-    )
-
-    if product_search:
-
-        search_results = product_summary[
-            product_summary["Description"].str.contains(
-                product_search,
-                case=False,
-                na=False
-            )
-        ]
-
-        st.write(
-            f"Products found: {len(search_results):,}"
-        )
-
-        st.dataframe(
-            search_results,
-            width="stretch",
-            hide_index=True
-        )
 
     st.divider()
 
-    
+    st.subheader("Product Search")
 
-    st.subheader("Product Revenue Concentration")
-
-    total_product_revenue = product_summary["Total_Revenue"].sum()
-
-    product_revenue_sorted = product_summary.sort_values(
-        "Total_Revenue",
-        ascending=False
-    ).copy()
-
-    product_revenue_sorted["Cumulative_Revenue"] = (
-        product_revenue_sorted["Total_Revenue"].cumsum()
+    search_term = st.text_input(
+        "Search for a product"
     )
 
-    product_revenue_sorted["Cumulative_Percentage"] = (
-        product_revenue_sorted["Cumulative_Revenue"] /
-        total_product_revenue
+    if search_term:
+
+        st.caption(f"Search results for: {search_term}")
+
+    search_results = product_summary[
+        product_summary.index.str.contains(
+            search_term,
+            case=False,
+            na=False
+        )
+    ]
+
+    if not search_results.empty:
+
+        st.caption(f"Products found: {len(search_results):,}")
+
+        st.dataframe(
+            search_results,
+            width="stretch"
+        )
+
+    else:
+        st.warning("No products found. Try another search term.")
+
+        
+
+    st.divider()
+
+    st.subheader("Revenue Concentration (Pareto Analysis)")
+
+    pareto = (
+        product_summary["Total_Revenue"]
+        .sort_values(ascending=False)
+        .reset_index()
+    )
+
+    pareto["Cumulative_Revenue"] = (
+        pareto["Total_Revenue"].cumsum()
+    )
+
+    pareto["Cumulative_Percentage"] = (
+        pareto["Cumulative_Revenue"] /
+        pareto["Total_Revenue"].sum()
     ) * 100
 
     products_for_80 = (
-        product_revenue_sorted["Cumulative_Percentage"] < 80
+        pareto["Cumulative_Percentage"] <= 80
     ).sum() + 1
 
-    col1, col2 = st.columns(2)
+    total_products = len(pareto)
 
-    col1.metric(
-        "Unique Products",
-        f"{len(product_summary):,}"
-    )
-
-    col2.metric(
-        "Products Generating 80% of Revenue",
+    st.metric(
+        "Products needed to generate approximately 80% of revenue",
         f"{products_for_80:,}"
     )
 
-    st.write(
-        f"These products represent "
-        f"{products_for_80 / len(product_summary) * 100:.2f}% "
-        f"of the catalog."
-    )
-
-    
-
-    st.subheader("Pareto Analysis - Cumulative Revenue")
-
-    pareto_chart_data = product_revenue_sorted.head(100).copy()
-
-    pareto_chart_data["Product_Rank"] = range(
-        1,
-        len(pareto_chart_data) + 1
-    )
-
-    pareto_chart_data = pareto_chart_data.set_index(
-        "Product_Rank"
+    st.metric(
+        "Total unique products",
+        f"{total_products:,}"
     )
 
     st.line_chart(
-        pareto_chart_data["Cumulative_Percentage"],
-        x_label="Product Rank",
+        pareto["Cumulative_Percentage"],
+        x_label="Products (ranked by revenue)",
         y_label="Cumulative Revenue (%)"
-    )
-
-    st.caption(
-        "The chart displays the cumulative revenue contribution "
-        "of the top 100 products."
     )
