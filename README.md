@@ -151,6 +151,14 @@ The Streamlit dashboard provides four analytical sections:
 ![Product Revenue Concentration](docs/images/products3.png)
 
 
+## Project Demo
+
+Watch a 47-second walkthrough of the interactive dashboard:
+
+[![Watch the Project Demo](https://img.youtube.com/vi/z6hVGfl0bWM/0.jpg)](https://youtu.be/z6hVGfl0bWM)
+
+[Watch on YouTube](https://youtu.be/z6hVGfl0bWM)
+
 ## Installation and Setup
 
 ### 1. Clone the Repository
