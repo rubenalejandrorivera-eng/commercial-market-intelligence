@@ -12,6 +12,13 @@ __pycache__/
 data/raw/*
 data/processed/*
 
+# Keep only the optimized dashboard datasets
+!data/processed/product_summary.csv
+!data/processed/monthly_sales.csv
+!data/processed/customer_rfm_segments.csv
+!data/processed/customer_segment_analysis.csv
+!data/processed/customer_country_analysis.csv
+
 # Exceptions
 !.gitkeep
 

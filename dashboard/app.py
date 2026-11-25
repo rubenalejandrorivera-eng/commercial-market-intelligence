@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 
@@ -20,30 +21,22 @@ DATA_PATH = "data/processed/"
 
 @st.cache_data
 def load_products():
+
     return pd.read_csv(
-        DATA_PATH + "physical_products.csv",
-        usecols=["StockCode", "Description", "Quantity", "Revenue"]
+        DATA_PATH + "product_summary.csv",
+        index_col=0
     )
 
 
 @st.cache_data
 def load_monthly_sales():
 
-    sales = pd.read_csv(
-        DATA_PATH + "physical_products.csv",
-        usecols=["InvoiceDate", "Revenue"],
-        parse_dates=["InvoiceDate"]
+    monthly_data = pd.read_csv(
+        DATA_PATH + "monthly_sales.csv",
+        index_col=0
     )
 
-    sales["Month"] = sales["InvoiceDate"].dt.to_period("M")
-
-    monthly_sales = (
-        sales.groupby("Month")["Revenue"]
-        .sum()
-        .sort_index()
-    )
-
-    monthly_sales.index = monthly_sales.index.strftime("%b %Y")
+    monthly_sales = monthly_data["Revenue"]
 
     monthly_growth = monthly_sales.pct_change() * 100
 
@@ -126,8 +119,11 @@ total_transactions = customer_country["Total_Transactions"].sum()
 average_revenue = total_revenue / total_customers
 
 best_month = monthly_sales.idxmax()
+
 best_month_revenue = monthly_sales.max()
+
 best_growth_month = monthly_growth.idxmax()
+
 best_growth = monthly_growth.max()
 
 
@@ -178,20 +174,22 @@ with tab1:
         "Revenue per Identified Customer",
         f"£{average_revenue:,.2f}"
     )
-    
 
     st.divider()
 
-    st.metric(
-    "Best Sales Month",
-    best_month,
-    f"£{best_month_revenue:,.2f}"
-)
-    st.metric(
-    "Highest Monthly Growth",
-    best_growth_month,
-    f"{best_growth:.2f}%"
-)
+    col1, col2 = st.columns(2)
+
+    col1.metric(
+        "Best Sales Month",
+        best_month,
+        f"£{best_month_revenue:,.2f}"
+    )
+
+    col2.metric(
+        "Highest Monthly Growth",
+        best_growth_month,
+        f"{best_growth:.2f}%"
+    )
 
     st.subheader("Monthly Revenue Trend")
 
@@ -209,19 +207,18 @@ with tab1:
 
     st.divider()
 
-st.subheader("Monthly Revenue Growth (%)")
+    st.subheader("Monthly Revenue Growth (%)")
 
-st.bar_chart(
-    monthly_growth.dropna(),
-    x_label="Month",
-    y_label="Growth (%)"
-)
+    st.bar_chart(
+        monthly_growth.dropna(),
+        x_label="Month",
+        y_label="Growth (%)"
+    )
 
-
-st.caption(
-    "Month-over-month revenue growth. "
-    "Positive values indicate growth, negative values indicate a decline."
-)
+    st.caption(
+        "Month-over-month revenue growth. "
+        "Positive values indicate growth, negative values indicate a decline."
+    )
 
 
 # --------------------------------------------------
@@ -261,12 +258,17 @@ with tab2:
 
     selected_segment = st.selectbox(
         "Select a customer segment",
-        ["All"] + sorted(customer_rfm["Segment"].unique().tolist())
+        ["All"] + sorted(
+            customer_rfm["Segment"].unique().tolist()
+        )
     )
 
     if selected_segment == "All":
+
         filtered_customers = customer_rfm
+
     else:
+
         filtered_customers = customer_rfm[
             customer_rfm["Segment"] == selected_segment
         ]
@@ -336,53 +338,41 @@ with tab4:
 
     st.subheader("Product Performance Overview")
 
+    # Load pre-aggregated product data
+    product_summary = products.copy()
+
+    # Top 10 products by revenue
     top_products = (
-        products
-        .groupby("Description")["Revenue"]
-        .sum()
-        .sort_values(ascending=False)
-        .head(10)
+        product_summary["Total_Revenue"]
+        .nlargest(10)
+        .sort_values()
     )
 
     st.bar_chart(
-        top_products.sort_values(),
+        top_products,
         horizontal=True,
         x_label="Revenue (£)",
         y_label="Product"
     )
 
+    # Top 10 products by units sold
     st.subheader("Top Products by Units Sold")
 
     top_units = (
-        products
-        .groupby("Description")["Quantity"]
-        .sum()
-        .sort_values(ascending=False)
-        .head(10)
+        product_summary["Total_Units"]
+        .nlargest(10)
+        .sort_values()
     )
 
     st.bar_chart(
-        top_units.sort_values(),
+        top_units,
         horizontal=True,
         x_label="Units Sold",
         y_label="Product"
     )
 
+    # Product summary
     st.subheader("Product Summary")
-
-    product_summary = (
-        products
-        .groupby("Description")
-        .agg(
-            Total_Units=("Quantity", "sum"),
-            Total_Revenue=("Revenue", "sum")
-        )
-    )
-
-    product_summary["Average_Unit_Price"] = (
-        product_summary["Total_Revenue"] /
-        product_summary["Total_Units"]
-    )
 
     st.dataframe(
         product_summary.sort_values(
@@ -394,6 +384,7 @@ with tab4:
 
     st.divider()
 
+    # Product search
     st.subheader("Product Search")
 
     search_term = st.text_input(
@@ -402,32 +393,38 @@ with tab4:
 
     if search_term:
 
-        st.caption(f"Search results for: {search_term}")
-
-    search_results = product_summary[
-        product_summary.index.str.contains(
-            search_term,
-            case=False,
-            na=False
-        )
-    ]
-
-    if not search_results.empty:
-
-        st.caption(f"Products found: {len(search_results):,}")
-
-        st.dataframe(
-            search_results,
-            width="stretch"
+        st.caption(
+            f"Search results for: {search_term}"
         )
 
-    else:
-        st.warning("No products found. Try another search term.")
+        search_results = product_summary[
+            product_summary.index.str.contains(
+                search_term,
+                case=False,
+                na=False
+            )
+        ]
 
-        
+        if not search_results.empty:
+
+            st.caption(
+                f"Products found: {len(search_results):,}"
+            )
+
+            st.dataframe(
+                search_results,
+                width="stretch"
+            )
+
+        else:
+
+            st.warning(
+                "No products found. Try another search term."
+            )
 
     st.divider()
 
+    # Pareto analysis
     st.subheader("Revenue Concentration (Pareto Analysis)")
 
     pareto = (
@@ -451,12 +448,14 @@ with tab4:
 
     total_products = len(pareto)
 
-    st.metric(
-        "Products needed to generate approximately 80% of revenue",
+    col1, col2 = st.columns(2)
+
+    col1.metric(
+        "Products needed for approximately 80% of revenue",
         f"{products_for_80:,}"
     )
 
-    st.metric(
+    col2.metric(
         "Total unique products",
         f"{total_products:,}"
     )
